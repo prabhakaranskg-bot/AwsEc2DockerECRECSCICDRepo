@@ -3,43 +3,36 @@ pipeline {
 
     environment {
         AWS_DEFAULT_REGION = 'ap-south-2'
-        ECR_REPO           = '493643818608.dkr.ecr.ap-south-2.amazonaws.com/my-springboot-app'
-        IMAGE_TAG          = "${env.BUILD_NUMBER}"
-        ECS_CLUSTER        = 'springboot-cluster'
-        ECS_SERVICE        = 'springboot-service'
+        ECR_REPO = '493643818608.dkr.ecr.ap-south-2.amazonaws.com/my-springboot-app'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        ECS_CLUSTER = 'springboot-cluster'
+        ECS_SERVICE = 'springboot-service'
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                    credentialsId: 'github-creds',  // GitHub Jenkins credentials ID
+                    credentialsId: 'github-creds',
                     url: 'https://github.com/prabhakaranskg-bot/AwsEc2DockerECRECSCICDRepo.git'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build & Push Docker') {
             steps {
                 script {
-                    docker.build("${ECR_REPO}:${IMAGE_TAG}")
-                }
-            }
-        }
-
-        stage('Push to ECR & Deploy ECS') {
-            steps {
-                script {
-                    // AWS credentials securely injected
+					def ecrRegistry = ECR_REPO.tokenize('/')[0]
                     withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
+                        $class: 'AmazonWebServicesCredentialsBinding', 
                         credentialsId: 'aws-creds'
                     ]]) {
+                        // Docker builds
+                        docker.build("${ECR_REPO}:${IMAGE_TAG}")
 
                         // Login to ECR
                         sh """
                         aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
-                        docker login --username AWS --password-stdin ${ECR_REPO.split('/')[0]}
+                        docker login --username AWS --password-stdin ${ecrRegistry}
                         """
 
                         // Push Docker image
@@ -60,10 +53,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Deployment Successful: ${ECR_REPO}:${IMAGE_TAG}"
+            echo "Deployment Successful: ${ECR_REPO}:${IMAGE_TAG}"
         }
         failure {
-            echo "❌ Deployment Failed!"
+            echo "Deployment Failed!"
         }
     }
 }
