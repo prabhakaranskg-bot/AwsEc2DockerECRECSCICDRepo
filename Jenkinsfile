@@ -2,15 +2,11 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID     = credentials('AKIAXF33W4ZYDP47QKUD')      // Jenkins credential ID
-        AWS_SECRET_ACCESS_KEY = credentials('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')      // Jenkins credential ID
-        AWS_DEFAULT_REGION    = 'ap-south-2'
-
-        ECR_REPO_URL = '493643818608.dkr.ecr.ap-south-2.amazonaws.com/my-springboot-app'
-        IMAGE_TAG    = "${env.BUILD_NUMBER}"
-
-        ECS_CLUSTER  = 'springboot-cluster'
-        ECS_SERVICE  = 'springboot-service'
+        AWS_DEFAULT_REGION = 'ap-south-2'
+        ECR_REPO           = '493643818608.dkr.ecr.ap-south-2.amazonaws.com/my-springboot-app'
+        IMAGE_TAG          = "${env.BUILD_NUMBER}"
+        ECS_CLUSTER        = 'springboot-cluster'
+        ECS_SERVICE        = 'springboot-service'
     }
 
     stages {
@@ -18,7 +14,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                	credentialsId: 'github-creds',
+                    credentialsId: 'github-creds',  // GitHub Jenkins credentials ID
                     url: 'https://github.com/prabhakaranskg-bot/AwsEc2DockerECRECSCICDRepo.git'
             }
         }
@@ -26,41 +22,37 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh """
-                        docker build -t ${ECR_REPO_URL}:${IMAGE_TAG} .
-                    """
+                    docker.build("${ECR_REPO}:${IMAGE_TAG}")
                 }
             }
         }
 
-        stage('Login to ECR') {
+        stage('Push to ECR & Deploy ECS') {
             steps {
                 script {
-                    sh """
-                        aws ecr get-login-password --region ${AWS_DEFAULT_REGION} \
-                        | docker login --username AWS --password-stdin ${ECR_REPO_URL}
-                    """
-                }
-            }
-        }
+                    // AWS credentials securely injected
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-creds'
+                    ]]) {
 
-        stage('Push to ECR') {
-            steps {
-                script {
-                    sh "docker push ${ECR_REPO_URL}:${IMAGE_TAG}"
-                }
-            }
-        }
+                        // Login to ECR
+                        sh """
+                        aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
+                        docker login --username AWS --password-stdin ${ECR_REPO.split('/')[0]}
+                        """
 
-        stage('Deploy to ECS') {
-            steps {
-                script {
-                    sh """
+                        // Push Docker image
+                        sh "docker push ${ECR_REPO}:${IMAGE_TAG}"
+
+                        // Deploy to ECS
+                        sh """
                         aws ecs update-service \
                             --cluster ${ECS_CLUSTER} \
                             --service ${ECS_SERVICE} \
                             --force-new-deployment
-                    """
+                        """
+                    }
                 }
             }
         }
@@ -68,10 +60,10 @@ pipeline {
 
     post {
         success {
-            echo "Deployment Successful → ${ECR_REPO_URL}:${IMAGE_TAG}"
+            echo "✅ Deployment Successful: ${ECR_REPO}:${IMAGE_TAG}"
         }
         failure {
-            echo "Deployment Failed!"
+            echo "❌ Deployment Failed!"
         }
     }
 }
