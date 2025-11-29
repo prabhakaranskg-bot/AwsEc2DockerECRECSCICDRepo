@@ -10,7 +10,7 @@ public class MainController {
 	public String hello() {
 		
 		return "Spring Boot Application deployed Succesfully in"
-				+ "ECS using ECR docker and git workflows "
+				+ "ECS using ECR docker and Jenkins "
 				+ "pipelines";
 	}
 }
