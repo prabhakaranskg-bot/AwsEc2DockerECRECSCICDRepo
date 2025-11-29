@@ -26,7 +26,7 @@ pipeline {
                         $class: 'AmazonWebServicesCredentialsBinding', 
                         credentialsId: 'aws-creds'
                     ]]) {
-                        // Docker build
+                        // Docker builds
                         docker.build("${ECR_REPO}:${IMAGE_TAG}")
 
                         // Login to ECR
