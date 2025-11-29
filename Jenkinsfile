@@ -18,27 +18,44 @@ pipeline {
             }
         }
 
-        stage('Build & Push Docker') {
+        stage('ECR Login') {
             steps {
                 script {
-					def ecrRegistry = ECR_REPO.tokenize('/')[0]
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding', 
-                        credentialsId: 'aws-creds'
-                    ]]) {
-                        // Docker builds
-                        docker.build("${ECR_REPO}:${IMAGE_TAG}")
-
-                        // Login to ECR
+                    def ecrRegistry = ECR_REPO.tokenize('/')[0]
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
                         sh """
+                        echo 'Logging in to AWS ECR...'
                         aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
                         docker login --username AWS --password-stdin ${ecrRegistry}
                         """
+                    }
+                }
+            }
+        }
 
-                        // Push Docker image
-                        sh "docker push ${ECR_REPO}:${IMAGE_TAG}"
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo 'Building Docker image...'
+                    sh "docker build -t ${ECR_REPO}:${IMAGE_TAG} ."
+                }
+            }
+        }
 
-                        // Deploy to ECS
+        stage('Push to ECR') {
+            steps {
+                script {
+                    echo 'Pushing Docker image to ECR...'
+                    sh "docker push ${ECR_REPO}:${IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Deploy to ECS') {
+            steps {
+                script {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+                        echo 'Deploying to ECS...'
                         sh """
                         aws ecs update-service \
                             --cluster ${ECS_CLUSTER} \
@@ -53,10 +70,10 @@ pipeline {
 
     post {
         success {
-            echo "Deployment Successful: ${ECR_REPO}:${IMAGE_TAG}"
+            echo "✅ Deployment Successful: ${ECR_REPO}:${IMAGE_TAG}"
         }
         failure {
-            echo "Deployment Failed!"
+            echo "❌ Deployment Failed!"
         }
     }
 }
