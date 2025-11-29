@@ -21,6 +21,7 @@ pipeline {
         stage('Build & Push Docker') {
             steps {
                 script {
+					def ecrRegistry = ECR_REPO.tokenize('/')[0]
                     withCredentials([[
                         $class: 'AmazonWebServicesCredentialsBinding', 
                         credentialsId: 'aws-creds'
@@ -31,7 +32,7 @@ pipeline {
                         // Login to ECR
                         sh """
                         aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
-                        docker login --username AWS --password-stdin ${ECR_REPO.split('/')[0]}
+                        docker login --username AWS --password-stdin ${ecrRegistry}
                         """
 
                         // Push Docker image
