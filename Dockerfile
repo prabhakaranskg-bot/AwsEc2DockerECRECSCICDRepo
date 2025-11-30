@@ -4,9 +4,8 @@ FROM jenkins/jenkins:lts
 # Switch to root to install dependencies
 USER root
 
-# Install required packages: Java, Git, Docker CLI, curl, unzip
+# Install required packages: git, curl, unzip, docker.io
 RUN apt-get update && apt-get install -y \
-    openjdk-17-jdk \
     git \
     curl \
     unzip \
@@ -19,10 +18,7 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/aws
  && /tmp/aws/install \
  && rm -rf /tmp/aws /tmp/awscliv2.zip
 
-# Set environment variables for Jenkins
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-
-# Switch back to jenkins user
+# Switch back to Jenkins user
 USER jenkins
 
 # Expose Jenkins ports
