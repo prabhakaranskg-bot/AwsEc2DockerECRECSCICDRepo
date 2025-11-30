@@ -1,28 +1,26 @@
-# Base image for Spring Boot
-FROM eclipse-temurin:21-jdk-jammy
+# Stage 1: Build the Spring Boot app
+FROM openjdk:17-jdk-slim AS build
 
-# Set working directory
+# Install tools
+RUN apt-get update && apt-get install -y git curl unzip && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copy Maven wrapper and project files
-COPY pom.xml mvnw ./
-COPY mvnw.cmd ./
-COPY src ./src
+# Copy all files from project into container
+COPY . .
 
-# Make mvnw executable
+# Make mvnw executable and build
 RUN chmod +x mvnw
-
-# Build Spring Boot app using Maven wrapper
 RUN ./mvnw clean package -DskipTests
 
-# Copy built jar to a clean image
-FROM eclipse-temurin:21-jdk-jammy
+# Stage 2: Run the app
+FROM openjdk:17-jdk-slim
+
 WORKDIR /app
 
-COPY --from=0 /app/target/*.jar app.jar
+# Copy the jar from the build stage
+COPY --from=build /app/target/*.jar app.jar
 
-# Expose port
 EXPOSE 8080
 
-# Run Spring Boot app
 ENTRYPOINT ["java","-jar","app.jar"]
