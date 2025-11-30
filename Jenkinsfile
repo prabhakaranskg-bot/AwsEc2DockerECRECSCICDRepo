@@ -3,14 +3,13 @@ pipeline {
 
     environment {
         AWS_DEFAULT_REGION = 'ap-south-2'
-        ECR_REPO = '493643818608.dkr.ecr.ap-south-2.amazonaws.com/my-springboot-app'
-        IMAGE_TAG = "${env.BUILD_NUMBER}"
-        ECS_CLUSTER = 'springboot-cluster'
-        ECS_SERVICE = 'springboot-service'
+        ECR_REPO           = '493643818608.dkr.ecr.ap-south-2.amazonaws.com/my-springboot-app'
+        IMAGE_TAG          = "${env.BUILD_NUMBER}"
+        ECS_CLUSTER        = 'springboot-cluster'
+        ECS_SERVICE        = 'springboot-service'
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -22,18 +21,20 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image
-                    sh "docker build -t ${ECR_REPO}:${IMAGE_TAG} ."
+                    docker.build("${ECR_REPO}:${IMAGE_TAG}")
                 }
             }
         }
 
         stage('Login to ECR') {
             steps {
-                script {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding', 
+                    credentialsId: 'aws-creds'   // Jenkins AWS credentials
+                ]]) {
                     sh """
-                        aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
-                        docker login --username AWS --password-stdin ${ECR_REPO.split('/')[0]}
+                    aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
+                    docker login --username AWS --password-stdin ${ECR_REPO.split('/')[0]}
                     """
                 }
             }
@@ -41,28 +42,32 @@ pipeline {
 
         stage('Push to ECR') {
             steps {
-                sh "docker push ${ECR_REPO}:${IMAGE_TAG}"
+                script {
+                    sh "docker push ${ECR_REPO}:${IMAGE_TAG}"
+                }
             }
         }
 
         stage('Deploy to ECS') {
             steps {
-                sh """
+                script {
+                    sh """
                     aws ecs update-service \
                         --cluster ${ECS_CLUSTER} \
                         --service ${ECS_SERVICE} \
                         --force-new-deployment
-                """
+                    """
+                }
             }
         }
     }
 
     post {
         success {
-            echo "✅ Deployment Successful: ${ECR_REPO}:${IMAGE_TAG}"
+            echo "Deployment Successful: ${ECR_REPO}:${IMAGE_TAG}"
         }
         failure {
-            echo "❌ Deployment Failed!"
+            echo "Deployment Failed!"
         }
     }
 }
