@@ -1,17 +1,32 @@
-# Use official OpenJDK 21 image
-FROM eclipse-temurin:21-jdk
+# Base Jenkins LTS image
+FROM jenkins/jenkins:lts
 
-# Set working directory
-WORKDIR /app
+# Switch to root to install dependencies
+USER root
 
-# Copy SSL certs/resources if needed
-# COPY src/main/resources /app/resources
+# Install required packages: Java, Git, Docker CLI, curl, unzip
+RUN apt-get update && apt-get install -y \
+    openjdk-17-jdk \
+    git \
+    curl \
+    unzip \
+    docker.io \
+ && rm -rf /var/lib/apt/lists/*
 
-# Copy Spring Boot fat JAR
-COPY target/AwsEc2DockerECRECSCICD-0.0.1-SNAPSHOT.jar app.jar
+# Install AWS CLI v2
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip" \
+ && unzip /tmp/awscliv2.zip -d /tmp \
+ && /tmp/aws/install \
+ && rm -rf /tmp/aws /tmp/awscliv2.zip
 
-# Expose port 8080
-EXPOSE 8080
+# Set environment variables for Jenkins
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
-# Run the JAR
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Switch back to jenkins user
+USER jenkins
+
+# Expose Jenkins ports
+EXPOSE 8080 50000
+
+# Default command
+CMD ["/sbin/tini", "--", "/usr/local/bin/jenkins.sh"]

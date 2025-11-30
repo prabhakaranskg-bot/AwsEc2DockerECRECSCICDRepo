@@ -10,6 +10,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -18,52 +19,40 @@ pipeline {
             }
         }
 
-        stage('ECR Login') {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    def ecrRegistry = ECR_REPO.tokenize('/')[0]
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                        sh """
-                        echo 'Logging in to AWS ECR...'
-                        aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
-                        docker login --username AWS --password-stdin ${ecrRegistry}
-                        """
-                    }
+                    // Build Docker image
+                    sh "docker build -t ${ECR_REPO}:${IMAGE_TAG} ."
                 }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Login to ECR') {
             steps {
                 script {
-                    echo 'Building Docker image...'
-                    sh "docker build -t ${ECR_REPO}:${IMAGE_TAG} ."
+                    sh """
+                        aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
+                        docker login --username AWS --password-stdin ${ECR_REPO.split('/')[0]}
+                    """
                 }
             }
         }
 
         stage('Push to ECR') {
             steps {
-                script {
-                    echo 'Pushing Docker image to ECR...'
-                    sh "docker push ${ECR_REPO}:${IMAGE_TAG}"
-                }
+                sh "docker push ${ECR_REPO}:${IMAGE_TAG}"
             }
         }
 
         stage('Deploy to ECS') {
             steps {
-                script {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                        echo 'Deploying to ECS...'
-                        sh """
-                        aws ecs update-service \
-                            --cluster ${ECS_CLUSTER} \
-                            --service ${ECS_SERVICE} \
-                            --force-new-deployment
-                        """
-                    }
-                }
+                sh """
+                    aws ecs update-service \
+                        --cluster ${ECS_CLUSTER} \
+                        --service ${ECS_SERVICE} \
+                        --force-new-deployment
+                """
             }
         }
     }
