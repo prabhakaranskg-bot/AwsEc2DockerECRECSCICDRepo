@@ -11,11 +11,8 @@ pipeline {
     }
 
     stages {
-
         stage('Clean Workspace') {
-            steps {
-                deleteDir() // wipes the workspace to start fresh
-            }
+            steps { deleteDir() }
         }
 
         stage('Checkout') {
@@ -29,8 +26,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image from workspace root
-                    docker.build("${ECR_REPO}:${IMAGE_TAG}", ".")
+                    docker.build("${ECR_REPO}:${IMAGE_TAG}")
                 }
             }
         }
@@ -48,9 +44,7 @@ pipeline {
 
         stage('Push to ECR') {
             steps {
-                script {
-                    sh "docker push ${ECR_REPO}:${IMAGE_TAG}"
-                }
+                sh "docker push ${ECR_REPO}:${IMAGE_TAG}"
             }
         }
 
@@ -69,11 +63,7 @@ pipeline {
     }
 
     post {
-        success {
-            echo "Deployment Successful: ${ECR_REPO}:${IMAGE_TAG}"
-        }
-        failure {
-            echo "Deployment Failed!"
-        }
+        success { echo "Deployment Successful: ${ECR_REPO}:${IMAGE_TAG}" }
+        failure { echo "Deployment Failed!" }
     }
 }
