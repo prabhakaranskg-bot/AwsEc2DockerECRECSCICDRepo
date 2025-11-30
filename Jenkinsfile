@@ -11,6 +11,13 @@ pipeline {
     }
 
     stages {
+
+        stage('Clean Workspace') {
+            steps {
+                deleteDir() // wipes the workspace to start fresh
+            }
+        }
+
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -22,7 +29,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${ECR_REPO}:${IMAGE_TAG}")
+                    // Build Docker image from workspace root
+                    docker.build("${ECR_REPO}:${IMAGE_TAG}", ".")
                 }
             }
         }
