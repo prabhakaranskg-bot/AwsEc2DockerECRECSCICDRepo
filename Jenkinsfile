@@ -4,6 +4,7 @@ pipeline {
     environment {
         AWS_DEFAULT_REGION = 'ap-south-2'
         ECR_REPO           = '493643818608.dkr.ecr.ap-south-2.amazonaws.com/my-springboot-app'
+        ECR_REGISTRY       = '493643818608.dkr.ecr.ap-south-2.amazonaws.com'
         IMAGE_TAG          = "${env.BUILD_NUMBER}"
         ECS_CLUSTER        = 'springboot-cluster'
         ECS_SERVICE        = 'springboot-service'
@@ -28,13 +29,10 @@ pipeline {
 
         stage('Login to ECR') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding', 
-                    credentialsId: 'aws-creds'   // Jenkins AWS credentials
-                ]]) {
+                withAWS(credentials: 'aws-creds', region: "${AWS_DEFAULT_REGION}") {
                     sh """
-                    aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
-                    docker login --username AWS --password-stdin ${ECR_REPO.split('/')[0]}
+                        aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | \
+                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
                     """
                 }
             }
@@ -50,12 +48,12 @@ pipeline {
 
         stage('Deploy to ECS') {
             steps {
-                script {
+                withAWS(credentials: 'aws-creds', region: "${AWS_DEFAULT_REGION}") {
                     sh """
-                    aws ecs update-service \
-                        --cluster ${ECS_CLUSTER} \
-                        --service ${ECS_SERVICE} \
-                        --force-new-deployment
+                        aws ecs update-service \
+                            --cluster ${ECS_CLUSTER} \
+                            --service ${ECS_SERVICE} \
+                            --force-new-deployment
                     """
                 }
             }
