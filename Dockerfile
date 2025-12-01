@@ -1,5 +1,5 @@
 # Stage 1: Build the Spring Boot app
-FROM openjdk:17-jdk-slim AS build
+FROM eclipse-temurin:17-jdk AS build
 
 # Install tools
 RUN apt-get update && apt-get install -y git curl unzip && rm -rf /var/lib/apt/lists/*
