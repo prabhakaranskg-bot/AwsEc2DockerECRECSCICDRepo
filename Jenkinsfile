@@ -10,6 +10,10 @@ pipeline {
         ECS_SERVICE        = 'springboot-service'
     }
 
+    options {
+        skipDefaultCheckout(true) // Prevent auto checkout to control it manually
+    }
+
     stages {
         stage('Clean Workspace') {
             steps { deleteDir() }
@@ -17,36 +21,21 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    credentialsId: 'github-creds',
-                    url: 'https://github.com/prabhakaranskg-bot/AwsEc2DockerECRECSCICDRepo.git'
+                checkout([$class: 'GitSCM',
+                          branches: [[name: '*/main']],
+                          userRemoteConfigs: [[
+                              url: 'https://github.com/prabhakaranskg-bot/AwsEc2DockerECRECSCICDRepo.git',
+                              credentialsId: 'github-creds'
+                          ]],
+                          extensions: [[$class: 'WipeWorkspace']] // Ensures old files are removed
+                ])
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Ensure Docker is available
-                    sh 'docker --version'
-
-                    // Build Spring Boot Docker image
-                    docker.build("${ECR_REPO}:${IMAGE_TAG}", "-f Dockerfile .")
-                }
-            }
-        }
-
-        stage('Install AWS CLI (if missing)') {
-            steps {
-                script {
-                    sh '''
-                        if ! command -v aws &> /dev/null
-                        then
-                            echo "AWS CLI not found, installing..."
-                            apt-get update && apt-get install -y awscli
-                        else
-                            echo "AWS CLI already installed"
-                        fi
-                    '''
+                    docker.build("${ECR_REPO}:${IMAGE_TAG}")
                 }
             }
         }
