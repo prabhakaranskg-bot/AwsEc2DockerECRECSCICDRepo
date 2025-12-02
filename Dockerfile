@@ -14,7 +14,7 @@ RUN chmod +x mvnw
 RUN ./mvnw clean package -DskipTests
 
 # Stage 2: Run the app
-FROM openjdk:21-slim
+FROM eclipse-temurin:21-jdk
 
 WORKDIR /app
 
