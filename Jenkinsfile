@@ -26,7 +26,27 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${ECR_REPO}:${IMAGE_TAG}")
+                    // Ensure Docker is available
+                    sh 'docker --version'
+
+                    // Build Spring Boot Docker image
+                    docker.build("${ECR_REPO}:${IMAGE_TAG}", "-f Dockerfile .")
+                }
+            }
+        }
+
+        stage('Install AWS CLI (if missing)') {
+            steps {
+                script {
+                    sh '''
+                        if ! command -v aws &> /dev/null
+                        then
+                            echo "AWS CLI not found, installing..."
+                            apt-get update && apt-get install -y awscli
+                        else
+                            echo "AWS CLI already installed"
+                        fi
+                    '''
                 }
             }
         }
