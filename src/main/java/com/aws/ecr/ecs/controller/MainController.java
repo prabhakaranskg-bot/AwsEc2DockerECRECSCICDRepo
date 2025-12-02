@@ -11,6 +11,6 @@ public class MainController {
 		
 		return "Spring Boot Application deployed Succesfully in"
 				+ "ECS using ECR docker and Jenkins "
-				+ "pipelines commit";
+				+ "pipelines-final success";
 	}
 }
