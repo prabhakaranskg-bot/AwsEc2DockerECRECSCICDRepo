@@ -14,7 +14,7 @@ RUN chmod +x mvnw
 RUN ./mvnw clean package -DskipTests
 
 # Stage 2: Run the app
-FROM openjdk:17-jdk-slim
+FROM openjdk:21-slim
 
 WORKDIR /app
 
