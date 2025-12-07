@@ -10,10 +10,6 @@ pipeline {
         ECS_SERVICE        = 'springboot-service'
     }
 
-    options {
-        skipDefaultCheckout(true) // Prevent auto checkout to control it manually
-    }
-
     stages {
         stage('Clean Workspace') {
             steps { deleteDir() }
