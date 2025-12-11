@@ -60,6 +60,7 @@ pipeline {
                         aws ecs update-service \
                             --cluster ${ECS_CLUSTER} \
                             --service ${ECS_SERVICE} \
+                            --task-definition springboot-taskdef:2 \
                             --force-new-deployment
                     """
                 }
