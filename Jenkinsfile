@@ -9,6 +9,7 @@ pipeline {
         ECS_SERVICE        = 'springboot-taskdef-service-me61gx90'
         CONTAINER_NAME     = 'springboot-container'
         TASK_FAMILY        = 'springboot-taskdef'
+        TASK_EXEC_ROLE     = 'ecsTaskExecutionRole' // IAM Role for ECS to pull images from ECR
     }
 
     stages {
@@ -48,7 +49,7 @@ pipeline {
             }
         }
 
-        stage('Push to ECR') {
+        stage('Push Docker Image') {
             steps {
                 sh """
                     docker push ${ECR_REPO}:${IMAGE_TAG}
@@ -62,35 +63,26 @@ pipeline {
             steps {
                 withAWS(credentials: 'aws-creds', region: "${AWS_DEFAULT_REGION}") {
                     script {
-                        // Register new task definition and capture ARN
-                        def taskDefArn = sh(
+                        env.TASK_DEF_ARN = sh(
                             script: """
                                 aws ecs register-task-definition \
                                     --family ${TASK_FAMILY} \
                                     --requires-compatibilities FARGATE \
                                     --network-mode awsvpc \
                                     --cpu 256 --memory 512 \
-                                    --container-definitions '[
-                                        {
-                                            "name": "${CONTAINER_NAME}",
-                                            "image": "${ECR_REPO}:${IMAGE_TAG}",
-                                            "essential": true,
-                                            "portMappings": [
-                                                {
-                                                    "containerPort": 8080,
-                                                    "hostPort": 8080,
-                                                    "protocol": "tcp"
-                                                }
-                                            ]
-                                        }
-                                    ]' \
+                                    --execution-role-arn arn:aws:iam::493643818608:role/${TASK_EXEC_ROLE} \
+                                    --container-definitions '[{
+                                        "name": "${CONTAINER_NAME}",
+                                        "image": "${ECR_REPO}:${IMAGE_TAG}",
+                                        "essential": true,
+                                        "portMappings": [{"containerPort": 8080,"hostPort": 8080,"protocol": "tcp"}]
+                                    }]' \
                                     --query 'taskDefinition.taskDefinitionArn' \
                                     --output text
                             """,
                             returnStdout: true
                         ).trim()
-                        env.TASK_DEF_ARN = taskDefArn
-                        echo "Registered Task Definition: ${taskDefArn}"
+                        echo "Registered Task Definition ARN: ${env.TASK_DEF_ARN}"
                     }
                 }
             }
