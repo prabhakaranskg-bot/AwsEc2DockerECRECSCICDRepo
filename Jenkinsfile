@@ -7,7 +7,7 @@ pipeline {
         ECR_REGISTRY       = '493643818608.dkr.ecr.ap-south-2.amazonaws.com'
         IMAGE_TAG          = "${env.BUILD_NUMBER}"
         ECS_CLUSTER        = 'springboot-cluster'
-        ECS_SERVICE        = 'springboot-service'
+        ECS_SERVICE        = 'springboot-taskdef-service-me61gx90'
     }
 
     stages {
